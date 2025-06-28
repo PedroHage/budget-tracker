@@ -1,23 +1,30 @@
 ﻿string[] categories = ["Food", "Rent", "Transport", "Utilities", "Debt", "Health", "Shopping", "Entertainment", "Education", "Work"];
-TransactionService service= new TransactionService();
+TransactionService service= new();
 List<Transaction> transactions = service.LoadTransactions();
 
 while (true)
 {
+    Console.WriteLine("<===============Budget Tracker===============>");
     Console.WriteLine("[1] Add Transaction");
     Console.WriteLine("[2] View Transactions");
     Console.WriteLine("[3] View Balance");
-    Console.WriteLine("[4] Exit");
+    Console.WriteLine("[4] View Income");
+    Console.WriteLine("[5] View Expenses");
+    Console.WriteLine("[6] Filter by Category");
+    Console.WriteLine("[7] Exit");
     Console.Write("> ");
     char userInput = Console.ReadKey().KeyChar;
-    Console.WriteLine("");
+    Console.WriteLine("\n");
 
     switch (userInput)
     {
         case '1': AddTransaction(); break;
-        case '2': ViewTransaction(); break;
-        case '3': ViewBalance(); break;
-        case '4': Environment.Exit(0); break;
+        case '2': ViewTransactions(transactions); break;
+        case '3': Console.WriteLine(GetBalance(transactions)); break;
+        case '4': Console.WriteLine(GetIncome(transactions)); break; // transactions.Where(t => t.Amount > 0).Sum(t => t.Amount)
+        case '5': Console.WriteLine(GetExpenses(transactions)); break;
+        case '6': FilterByCategory(); break;
+        case '7': Environment.Exit(0); break;
         default: Console.WriteLine("Invalid option."); break;
     }
 
@@ -34,16 +41,14 @@ void AddTransaction()
     }
 
     Console.Write("\nDescription: ");
-    var description = Console.ReadLine();
-    if (description == null)
-    {
-        description = "";
-    }
+    string description = Console.ReadLine() ?? "";
+
     Console.WriteLine("\nCategory: \n");
     for (int i = 0; i < categories.Length; i++)
     {
         Console.WriteLine($"[{i}] {categories[i]}");
     }
+    
     userInput = Console.ReadLine();
     if (!int.TryParse(userInput, out int categoryIndex) || categoryIndex < 0 || categoryIndex > 9 )
     {
@@ -54,7 +59,7 @@ void AddTransaction()
     Console.WriteLine("Transaction registered with success.");
 }
 
-void ViewTransaction()
+void ViewTransactions(List<Transaction> transactions)
 {
     Console.WriteLine("Transactions:");
     for (int i = 0; i < transactions.Count; i++)
@@ -63,12 +68,31 @@ void ViewTransaction()
     }
 }
 
-void ViewBalance()
+string GetBalance(List<Transaction> transactions)
 {
-    decimal balance = 0;
-    foreach (Transaction transaction in transactions)
+    decimal balance = transactions.Sum(t => t.Amount);
+    return "Balance: " + balance;
+}
+
+string GetIncome(List<Transaction> transactions)
+{
+    return "Income: " + transactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
+}
+
+string GetExpenses(List<Transaction> transactions)
+{
+    return "Expenses: " + transactions.Where(t => t.Amount < 0).Sum(t => t.Amount);
+}
+
+void FilterByCategory()
+{
+    foreach (string category in categories)
     {
-        balance += transaction.Amount;
+        List<Transaction> filteredTransactions = transactions.Where(t => t.Category.Equals(category)).ToList();
+        if (filteredTransactions.Count > 0)
+        {
+            Console.WriteLine($"{category}: ");
+            filteredTransactions.ForEach(t => Console.WriteLine($"{GetIncome(filteredTransactions)}\n{GetExpenses(filteredTransactions)}\n{GetBalance(filteredTransactions)}\n"));
+        }
     }
-    Console.WriteLine($"Balance: {balance}");
 }
