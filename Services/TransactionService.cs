@@ -1,4 +1,6 @@
 using System.Text.Json;
+using BudgetTracker.Models;
+namespace BudgetTracker.Services;
 
 class TransactionService
 {
