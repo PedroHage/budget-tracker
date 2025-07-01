@@ -19,8 +19,14 @@ class TransactionService
         {
             if (!File.Exists(_filePath))
                 return new List<Transaction>();
+
             var json = File.ReadAllText(_filePath);
             return JsonSerializer.Deserialize<List<Transaction>>(json) ?? new List<Transaction>();
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine("Invalid JSON format:" + ex.Message);
+            return new List<Transaction>();
         }
         catch (Exception ex)
         {
@@ -31,13 +37,37 @@ class TransactionService
 
     public void SaveTransactions(List<Transaction> transactions)
     {
-        var json = JsonSerializer.Serialize(transactions, s_writeOptions);
-        File.WriteAllText(_filePath, json);
+        try
+        {
+            var json = JsonSerializer.Serialize(transactions, s_writeOptions);
+            File.WriteAllText(_filePath, json);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.WriteLine("Error: Access to the file denied.");
+            Console.WriteLine("Transactions NOT saved");
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine("IO error:" + ex.Message);
+            Console.WriteLine("Transactions NOT saved");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected error saving transactions: " + ex.Message);
+            Console.WriteLine("Transactions NOT saved");
+        }
     }
 
     public void AddTransaction(List<Transaction> transactions, Transaction transaction)
     {
         transactions.Add(transaction);
+        SaveTransactions(transactions);
+    }
+
+    public void RemoveTransaction(List<Transaction> transactions, Transaction transaction)
+    {
+        transactions.Remove(transaction);
         SaveTransactions(transactions);
     }
 }

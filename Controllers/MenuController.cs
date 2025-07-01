@@ -23,21 +23,24 @@ class MenuController
             Console.WriteLine("[5] View Expenses");
             Console.WriteLine("[6] Filter by Category");
             Console.WriteLine("[7] Edit Transaction");
-            Console.WriteLine("[8] Exit");
+            Console.WriteLine("[8] Delete Transaction");
+            Console.WriteLine("[9] Exit");
             Console.Write("> ");
-            char userInput = Console.ReadKey().KeyChar;
+
+            var userInput = Console.ReadLine();
             Console.WriteLine("\n");
 
             switch (userInput)
             {
-                case '1': AddTransaction(); break;
-                case '2': ViewTransactions(transactions); break;
-                case '3': Console.WriteLine(GetBalance(transactions)); break;
-                case '4': Console.WriteLine(GetIncome(transactions)); break; // transactions.Where(t => t.Amount > 0).Sum(t => t.Amount)
-                case '5': Console.WriteLine(GetExpenses(transactions)); break;
-                case '6': FilterByCategory(); break;
-                case '7': EditTransaction(); break;
-                case '8': Environment.Exit(0); break;
+                case "1": AddTransaction(); break;
+                case "2": ViewTransactions(transactions); break;
+                case "3": Console.WriteLine(GetBalance(transactions)); break;
+                case "4": Console.WriteLine(GetIncome(transactions)); break; // transactions.Where(t => t.Amount > 0).Sum(t => t.Amount)
+                case "5": Console.WriteLine(GetExpenses(transactions)); break;
+                case "6": FilterByCategory(); break;
+                case "7": EditTransaction(); break;
+                case "8": DeleteTransaction(); break;
+                case "9": Environment.Exit(0); break;
                 default: Console.WriteLine("Invalid option."); break;
             }
         }
@@ -45,46 +48,56 @@ class MenuController
 
     private void AddTransaction()
     {
-        var transactionInfo = GetTransactionInfo();
-        if (transactionInfo.amount == null)
-        {
-            Console.WriteLine("Invalid amount. Transaction not saved");
-            return;
-        }
-        decimal amount = transactionInfo.amount.Value;
-        if (transactionInfo.category == null)
-        {
-            Console.WriteLine("Invalid category. Transaction not saved");
-            return;
-        }
-        int categoryIndex = transactionInfo.category.Value;
-        string description = transactionInfo.description;
-
+        var (amount, description, categoryIndex) = GetTransactionInfo();
         service.AddTransaction(transactions, new Transaction(amount, categories[categoryIndex], description));
         Console.WriteLine("Transaction registered with success.");
     }
 
-    private (decimal? amount, string description, int? category) GetTransactionInfo()
+    private (decimal amount, string description, int categoryIndex) GetTransactionInfo()
     {
-        decimal? amount = null;
-        string? description = null;
-        int? category = null;
-
-        Console.Write("Amount: ");
-        var userInput = Console.ReadLine();
-        if (decimal.TryParse(userInput, out decimal d))
+        decimal amount;
+        string description;
+        int category;
+        while (true)
+        {
+            Console.Write("Amount: ");
+            var inputAmount = Console.ReadLine();
+            if (!decimal.TryParse(inputAmount, out decimal d))
+            {
+                Console.WriteLine("Invalid amount. Try again\n");
+                continue;
+            }
             amount = d;
-        Console.Write("\nDescription: ");
-        description = Console.ReadLine() ?? "";
-        Console.WriteLine("\nCategory: \n");
-        for (int i = 0; i < categories.Length; i++)
-        {
-            Console.WriteLine($"[{i}] {categories[i]}");
+            break;
         }
-        userInput = Console.ReadLine();
-        if (int.TryParse(userInput, out int categoryIndex) && categories.ElementAtOrDefault(categoryIndex) != null)
+        while (true)
         {
+            Console.Write("\nDescription: ");
+            var inputDescription = Console.ReadLine();
+            if (string.IsNullOrEmpty(inputDescription))
+            {
+                Console.WriteLine("Invalid description. Try again\n");
+                continue;
+            }
+            description = inputDescription;
+            break;
+        }
+
+        while (true)
+        {
+            Console.WriteLine("\nCategory: \n");
+            for (int i = 0; i < categories.Length; i++)
+            {
+                Console.WriteLine($"[{i}] {categories[i]}");
+            }
+            var inputCategoryIndex = Console.ReadLine();
+            if (!int.TryParse(inputCategoryIndex, out int categoryIndex) || categories.ElementAtOrDefault(categoryIndex) == null)
+            {
+                Console.WriteLine("Invalid Category. Try again");
+                continue;
+            }
             category = categoryIndex;
+            break;
         }
         return (amount, description, category);
     }
@@ -94,7 +107,7 @@ class MenuController
         Console.WriteLine("Transactions:");
         for (int i = 0; i < transactions.Count; i++)
         {
-            Console.WriteLine($"\n{i + 1}. Amount: {CurrencyFormatter.FormatCurrency(transactions[i].Amount, "en-us")}\nCategory: {transactions[i].Category}\nDescription: {transactions[i].Description}\nDate: {transactions[i].Date}");
+            Console.WriteLine($"\n{i + 1}. Amount: {CurrencyFormatter.FormatCurrency(transactions[i].Amount, "en-us")}\nCategory: {transactions[i].Category}\nDescription: {transactions[i].Description}\nDate created: {transactions[i].Date}");
         }
     }
 
@@ -130,30 +143,79 @@ class MenuController
     private void EditTransaction()
     {
         ViewTransactions(transactions);
-        Console.Write("Choose the transaction to edit:");
-        var transactionChoice = Console.ReadLine();
-
         Transaction chosenTransaction;
-        if (int.TryParse(transactionChoice, out int transactionIndex) && transactions.ElementAtOrDefault(transactionIndex - 1) != null)
-            chosenTransaction = transactions[transactionIndex - 1];
-        else
+        while (true)
         {
-            Console.WriteLine("\nNo such transaction.");
-            return;
+            Console.Write("Choose the transaction to edit:");
+            var transactionChoice = Console.ReadLine();
+            if (!int.TryParse(transactionChoice, out int transactionIndex) || transactions.ElementAtOrDefault(transactionIndex - 1) == null)
+            {
+                Console.WriteLine("\nNo such transaction.");
+                continue;
+            }
+            chosenTransaction = transactions[transactionIndex - 1];
+            break;
         }
 
-        var transactionInfo = GetTransactionInfo();
-
-        chosenTransaction.Description = transactionInfo.description;
-        if (transactionInfo.amount == null)
-            Console.WriteLine("Amount value not in adequate format. Amount not changed");
-        else
-            chosenTransaction.Amount = transactionInfo.amount.Value;
-
-        if (transactionInfo.category == null)
-            Console.WriteLine("No such category. Category not changed");
-        else
-            chosenTransaction.Category = categories[transactionInfo.category.Value];
+        var (amount, description, categoryIndex) = GetTransactionInfo();
+        string userConfirmation;
+        while (true)
+        {
+            Console.WriteLine("Do you want to confirm the changes (y/n)?");
+            userConfirmation = (Console.ReadLine() ?? "").Trim().ToLower();
+            if (userConfirmation != "y" && userConfirmation != "n")
+            {
+                Console.WriteLine("Invalid option");
+                continue;
+            }
+            break;
+        }
+        if (userConfirmation == "n")
+        {
+            Console.WriteLine("Changes canceled.");
+            return;
+        }
+        chosenTransaction.Amount = amount;
+        chosenTransaction.Description = description;
+        chosenTransaction.Category = categories[categoryIndex];
+        service.SaveTransactions(transactions);
+        Console.WriteLine("Changes successfully saved.");
     }
 
+    private void DeleteTransaction()
+    {
+        ViewTransactions(transactions);
+        Transaction chosenTransaction;
+        while (true)
+        {
+            Console.Write("Choose the transaction to Delete:");
+            var transactionChoice = Console.ReadLine();
+            if (!int.TryParse(transactionChoice, out int transactionIndex) || transactions.ElementAtOrDefault(transactionIndex - 1) == null)
+            {
+                Console.WriteLine("\nNo such transaction.");
+                continue;
+            }
+            chosenTransaction = transactions[transactionIndex - 1];
+            break;
+        }
+        string userConfirmation;
+        while (true)
+        {
+            Console.WriteLine("Do you want to confirm the deletion (y/n)?");
+            userConfirmation = (Console.ReadLine() ?? "").Trim().ToLower();
+            if (userConfirmation != "y" && userConfirmation != "n")
+            {
+                Console.WriteLine("Invalid option");
+                continue;
+            }
+            break;
+        }
+        if (userConfirmation == "n")
+        {
+            Console.WriteLine("Deletion canceled.");
+            return;
+        }
+        service.RemoveTransaction(transactions, chosenTransaction);
+        Console.WriteLine("Transaction deleted.");
+    }
 }
